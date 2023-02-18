@@ -1,5 +1,5 @@
 import { NativeModules } from 'react-native';
 
-const { Chiptool } = NativeModules;
+const Chiptool = NativeModules.Chiptool || {};
 
 export default Chiptool;

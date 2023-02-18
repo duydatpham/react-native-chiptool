@@ -1,6 +1,7 @@
 package com.duydatpham.chiptool
 
 import android.util.Log
+import chip.devicecontroller.ChipDeviceController
 import chip.devicecontroller.NetworkCredentials
 import chip.setuppayload.SetupPayload
 import chip.setuppayload.SetupPayloadParser
@@ -30,6 +31,8 @@ class ChiptoolModule(
     final var TAG: String = "ChiptoolModule"
     override fun getName() = "Chiptool"
 
+    private var deviceController: ChipDeviceController? = null;
+
     @ReactMethod
     fun checkBarcode(
         barcode: String,
@@ -47,6 +50,7 @@ class ChiptoolModule(
             promise.resolve(false)
         }
     }
+
 
     @ReactMethod
     fun pairDevice(
@@ -89,7 +93,7 @@ class ChiptoolModule(
     private fun emitEvent(name: String, id: String ){
         val payloadEvent = Arguments.createMap()
         payloadEvent.putString("requestId", id)
-
+        Log.d(TAG, "Event: $name, id=$id")
         reactContext
             .getJSModule<RCTDeviceEventEmitter>(RCTDeviceEventEmitter::class.java)
             .emit(name, payloadEvent)
@@ -100,7 +104,11 @@ class ChiptoolModule(
         networkCredentialsParcelable: NetworkCredentialsParcelable,
         id: String
     ) {
-        val deviceController = ChipClient.getDeviceController(this.reactContext)
+        if(deviceController == null)
+            deviceController = ChipClient.getDeviceController(this.reactContext)
+        else {
+            deviceController?.close()
+        }
         val bluetoothManager = BluetoothManager()
 
         GlobalScope.launch(Dispatchers.Main) {
@@ -120,7 +128,7 @@ class ChiptoolModule(
 
             //TODO:start pairing
             emitEvent("onStartPairing", id)
-            deviceController.setCompletionListener(ConnectionCallback().apply {
+            deviceController?.setCompletionListener(ConnectionCallback().apply {
                 _id = id
             })
 
@@ -144,7 +152,7 @@ class ChiptoolModule(
                     NetworkCredentials.forThread(NetworkCredentials.ThreadCredentials(thread.operationalDataset))
             }
 
-            deviceController.pairDevice(gatt, connId, deviceId, deviceInfo.setupPinCode, network)
+            deviceController?.pairDevice(gatt, connId, deviceId, deviceInfo.setupPinCode, network)
             DeviceIdUtil.setNextAvailableId(reactContext, deviceId + 1)
         }
 
